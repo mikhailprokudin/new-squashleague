@@ -136,7 +136,41 @@ cd /opt/new-league
 docker compose -f docker-compose.prod.yml --env-file .env up --build -d
 ```
 
-## 7. Backup / restore
+## 7. Если API отдаёт 500: Table 'teams' doesn't exist
+
+MySQL init-скрипты выполняются **только при первом создании volume**.  
+Если контейнер БД уже поднимался «пустым», таблицы не появятся сами — примени схему вручную:
+
+```bash
+cd /opt/new-league
+chmod +x deploy/apply-schema.sh
+./deploy/apply-schema.sh
+```
+
+Или одной командой:
+
+```bash
+cd /opt/new-league
+set -a && source .env && set +a
+docker compose -f docker-compose.prod.yml --env-file .env exec -T db \
+  mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 \
+  < back/schema.sql
+```
+
+Проверка:
+
+```bash
+curl -s http://127.0.0.1:3000/api/standings | head
+```
+
+Полный сброс БД (удалит все данные):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env down -v
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+## 8. Backup / restore
 
 ```bash
 # backup
