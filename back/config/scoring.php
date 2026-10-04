@@ -31,7 +31,10 @@ return [
     'max_matches_same_division' => 2,
     'max_matches_cross_division' => 1,
 
+    // Normalized scores used for point lookup (always winner's games first)
     'allowed_scores' => ['3-0', '3-1', '3-2'],
+    // Input scores from player1 perspective may also be 0-3 / 1-3 / 2-3 (resolved in MatchesController)
+
     'higher_division' => 'red',
     'lower_division' => 'yellow',
 ];

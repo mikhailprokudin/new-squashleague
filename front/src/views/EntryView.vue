@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMatchEntryStore } from '@/stores/matchEntry'
-import type { Score } from '@/types'
+import { resolveMatchResult, type MatchScore } from '@/types'
 
 const store = useMatchEntryStore()
 const {
@@ -17,10 +17,9 @@ const {
 
 const player1Id = ref<number | null>(null)
 const player2Id = ref<number | null>(null)
-const winnerId = ref<number | null>(null)
-const score = ref<Score | ''>('')
+const score = ref<MatchScore | ''>('')
 
-const scores: Score[] = ['3-0', '3-1', '3-2']
+const scores: MatchScore[] = ['3-0', '3-1', '3-2', '0-3', '1-3', '2-3']
 
 onMounted(() => {
   void store.loadPlayers()
@@ -28,7 +27,6 @@ onMounted(() => {
 
 watch(player1Id, (id) => {
   player2Id.value = null
-  winnerId.value = null
   score.value = ''
   store.clearOpponents()
   if (id) {
@@ -37,7 +35,7 @@ watch(player1Id, (id) => {
 })
 
 watch(player2Id, () => {
-  winnerId.value = null
+  score.value = ''
 })
 
 const player1 = computed(() => players.value.find((p) => p.id === player1Id.value) ?? null)
@@ -47,7 +45,6 @@ const canSubmit = computed(
   () =>
     player1Id.value !== null &&
     player2Id.value !== null &&
-    winnerId.value !== null &&
     score.value !== '' &&
     !submitting.value,
 )
@@ -57,22 +54,22 @@ async function onSubmit() {
     !canSubmit.value ||
     player1Id.value === null ||
     player2Id.value === null ||
-    winnerId.value === null ||
     score.value === ''
   ) {
     return
   }
 
+  const resolved = resolveMatchResult(player1Id.value, player2Id.value, score.value)
+
   try {
     await store.submit({
       player1_id: player1Id.value,
       player2_id: player2Id.value,
-      winner_id: winnerId.value,
-      score: score.value,
+      winner_id: resolved.winner_id,
+      score: resolved.score,
     })
     player1Id.value = null
     player2Id.value = null
-    winnerId.value = null
     score.value = ''
     store.clearOpponents()
   } catch {
@@ -85,6 +82,13 @@ function labelForPlayer(p: { name: string; team_name?: string | null; division: 
   const div = p.division === 'red' ? 'красный' : 'жёлтый'
   return `${team}${p.name} (${div})`
 }
+
+function scoreLabel(s: MatchScore) {
+  if (!player1.value || !player2.value) {
+    return s
+  }
+  return `${s} — ${s.startsWith('3') ? player1.value.name : player2.value.name}`
+}
 </script>
 
 <template>
@@ -92,7 +96,9 @@ function labelForPlayer(p: { name: string; team_name?: string | null; division: 
     <header class="flex flex-col gap-2">
       <p class="text-sm font-semibold tracking-[0.2em] text-primary uppercase">Match desk</p>
       <h1 class="font-display text-4xl text-base-content">Ввод результата</h1>
-      <p class="text-base-content/70">Зафиксируйте счёт — очки начислятся сразу после сохранения.</p>
+      <p class="text-base-content/70">
+        Счёт от первого игрока: 3-x — победа первого, x-3 — победа соперника.
+      </p>
     </header>
 
     <form class="card card-border bg-base-200 shadow-md" @submit.prevent="onSubmit">
@@ -129,37 +135,11 @@ function labelForPlayer(p: { name: string; team_name?: string | null; division: 
           </p>
         </fieldset>
 
-        <fieldset class="fieldset" :disabled="!player1 || !player2">
-          <legend class="fieldset-legend">Победитель</legend>
-          <div class="flex flex-col gap-3">
-            <label class="flex cursor-pointer items-center gap-3">
-              <input
-                v-model.number="winnerId"
-                type="radio"
-                name="winner"
-                class="radio radio-primary"
-                :value="player1?.id"
-              />
-              <span>{{ player1?.name ?? 'Игрок 1' }}</span>
-            </label>
-            <label class="flex cursor-pointer items-center gap-3">
-              <input
-                v-model.number="winnerId"
-                type="radio"
-                name="winner"
-                class="radio radio-primary"
-                :value="player2?.id"
-              />
-              <span>{{ player2?.name ?? 'Соперник' }}</span>
-            </label>
-          </div>
-        </fieldset>
-
         <fieldset class="fieldset">
           <legend class="fieldset-legend">Счёт</legend>
-          <select v-model="score" class="select w-full" :disabled="!winnerId">
+          <select v-model="score" class="select w-full" :disabled="!player1 || !player2">
             <option value="" disabled>Выберите счёт</option>
-            <option v-for="s in scores" :key="s" :value="s">{{ s }}</option>
+            <option v-for="s in scores" :key="s" :value="s">{{ scoreLabel(s) }}</option>
           </select>
         </fieldset>
 

@@ -105,11 +105,10 @@ final class MatchesController
 
         $player1Id = (int) ($body['player1_id'] ?? 0);
         $player2Id = (int) ($body['player2_id'] ?? 0);
-        $winnerId = (int) ($body['winner_id'] ?? 0);
-        $score = (string) ($body['score'] ?? '');
+        $scoreInput = (string) ($body['score'] ?? '');
 
-        if ($player1Id <= 0 || $player2Id <= 0 || $winnerId <= 0 || $score === '') {
-            Response::error('Required: player1_id, player2_id, winner_id, score', 422);
+        if ($player1Id <= 0 || $player2Id <= 0 || $scoreInput === '') {
+            Response::error('Required: player1_id, player2_id, score', 422);
             return;
         }
 
@@ -118,10 +117,19 @@ final class MatchesController
             return;
         }
 
-        if (!in_array($winnerId, [$player1Id, $player2Id], true)) {
-            Response::error('winner_id must be player1_id or player2_id', 422);
+        $resolved = $this->resolveScore($scoreInput, $player1Id, $player2Id);
+        if ($resolved === null) {
+            Response::error('Invalid score. Allowed: 3-0, 3-1, 3-2, 0-3, 1-3, 2-3', 422);
             return;
         }
+
+        $winnerId = (int) ($body['winner_id'] ?? 0);
+        if ($winnerId > 0 && $winnerId !== $resolved['winner_id']) {
+            Response::error('winner_id does not match score', 422);
+            return;
+        }
+        $winnerId = $resolved['winner_id'];
+        $score = $resolved['score'];
 
         $player1 = $this->players->findById($player1Id);
         $player2 = $this->players->findById($player2Id);
@@ -184,5 +192,26 @@ final class MatchesController
                 'points_loser' => $points['loser'],
             ],
         ], 201);
+    }
+
+    /**
+     * Score is from player1's perspective:
+     * 3-x → player1 won, x-3 → player2 won.
+     * Stored score is always normalized to 3-0 / 3-1 / 3-2.
+     *
+     * @return array{winner_id: int, score: string}|null
+     */
+    private function resolveScore(string $score, int $player1Id, int $player2Id): ?array
+    {
+        $map = [
+            '3-0' => ['winner_id' => $player1Id, 'score' => '3-0'],
+            '3-1' => ['winner_id' => $player1Id, 'score' => '3-1'],
+            '3-2' => ['winner_id' => $player1Id, 'score' => '3-2'],
+            '0-3' => ['winner_id' => $player2Id, 'score' => '3-0'],
+            '1-3' => ['winner_id' => $player2Id, 'score' => '3-1'],
+            '2-3' => ['winner_id' => $player2Id, 'score' => '3-2'],
+        ];
+
+        return $map[$score] ?? null;
     }
 }

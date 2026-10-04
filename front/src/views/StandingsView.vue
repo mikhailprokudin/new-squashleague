@@ -19,6 +19,10 @@ function formatPoints(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 
+function teamTotalPoints(players: StandingPlayer[]) {
+  return players.reduce((sum, player) => sum + player.points, 0)
+}
+
 const hasTeams = computed(() => teams.value.length > 0)
 </script>
 
@@ -40,14 +44,16 @@ const hasTeams = computed(() => teams.value.length > 0)
 
     <div v-else-if="hasTeams" class="grid grid-cols-1 gap-5 lg:grid-cols-3">
       <section
-        v-for="(team, index) in teams"
+        v-for="team in teams"
         :key="team.id"
         class="card card-border bg-base-200 shadow-md"
       >
         <div class="card-body gap-5">
           <div class="flex items-center justify-between gap-3">
             <h2 class="card-title font-display text-2xl tracking-wide">{{ team.name }}</h2>
-            <span class="badge badge-secondary badge-outline">Team {{ index + 1 }}</span>
+            <span class="badge badge-secondary badge-outline tabular-nums">
+              {{ formatPoints(teamTotalPoints(team.players)) }} очков
+            </span>
           </div>
 
           <div class="rounded-box border border-error/40 bg-error/10 p-3">
