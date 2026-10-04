@@ -2,12 +2,12 @@ FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
-# More reliable installs on remote builders / flaky networks
-RUN npm config set fetch-retries 5 \
+RUN npm config set registry https://registry.npmjs.org/ \
+ && npm config set fetch-retries 5 \
  && npm config set fetch-retry-mintimeout 20000 \
  && npm config set fetch-retry-maxtimeout 120000
 
-COPY package.json package-lock.json ./
+COPY .npmrc package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
 COPY . .
