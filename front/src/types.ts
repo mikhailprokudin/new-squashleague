@@ -50,9 +50,55 @@ export interface MatchResult {
   score: Score
   points_player1: number
   points_player2: number
+  created_at?: string
   player1_name?: string
   player2_name?: string
   winner_name?: string
+  player1_team_name?: string
+  player2_team_name?: string
+}
+
+/** Display score from player1 perspective */
+export function displayScoreFromPlayer1(match: MatchResult): MatchScore {
+  if (match.winner_id === match.player1_id) {
+    return match.score
+  }
+
+  const invert: Record<Score, MatchScore> = {
+    '3-0': '0-3',
+    '3-1': '1-3',
+    '3-2': '2-3',
+  }
+  return invert[match.score]
+}
+
+export interface PlayedMatchStat {
+  id: number
+  opponent_id: number
+  opponent_name: string
+  opponent_team_name: string
+  opponent_division: Division
+  score: MatchScore | string
+  won: boolean
+  points_earned: number
+  created_at?: string | null
+}
+
+export interface UnplayedMatchStat {
+  opponent_id: number
+  opponent_name: string
+  opponent_team_name: string
+  opponent_division: Division
+}
+
+export interface PlayerStats {
+  player: Player
+  points: number
+  matches_played: number
+  max_possible_points: number
+  usefulness: number | null
+  played_matches: PlayedMatchStat[]
+  unplayed_matches: UnplayedMatchStat[]
 }
 
 export function resolveMatchResult(

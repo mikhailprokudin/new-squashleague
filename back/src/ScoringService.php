@@ -31,6 +31,16 @@ final class ScoringService
     }
 
     /**
+     * Maximum points a player can earn from one match: win 3-0 vs opponent's division.
+     */
+    public function maxWinnerPointsForMatch(string $playerDivision, string $opponentDivision): float
+    {
+        $result = $this->calculate($playerDivision, $opponentDivision, '3-0');
+
+        return $result['winner'];
+    }
+
+    /**
      * @return array{winner: float, loser: float, match_type: string}
      */
     public function calculate(string $winnerDivision, string $loserDivision, string $score): array

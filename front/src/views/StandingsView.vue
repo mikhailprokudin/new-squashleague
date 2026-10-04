@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { useStandingsStore } from '@/stores/standings'
 import type { StandingPlayer } from '@/types'
 
 const store = useStandingsStore()
+const router = useRouter()
 const { teams, loading, error } = storeToRefs(store)
 
 onMounted(() => {
@@ -21,6 +23,10 @@ function formatPoints(value: number) {
 
 function teamTotalPoints(players: StandingPlayer[]) {
   return players.reduce((sum, player) => sum + player.points, 0)
+}
+
+function openPlayer(playerId: number) {
+  void router.push({ name: 'player', params: { id: String(playerId) } })
 }
 
 const hasTeams = computed(() => teams.value.length > 0)
@@ -71,7 +77,12 @@ const hasTeams = computed(() => teams.value.length > 0)
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="player in byDivision(team.players, 'red')" :key="player.id">
+                  <tr
+                    v-for="player in byDivision(team.players, 'red')"
+                    :key="player.id"
+                    class="hover:bg-base-300/40 cursor-pointer"
+                    @click="openPlayer(player.id)"
+                  >
                     <td class="font-semibold text-sm md:text-base">{{ player.name }}</td>
                     <td class="text-right tabular-nums text-primary font-bold text-sm md:text-base">
                       {{ formatPoints(player.points) }}
@@ -98,7 +109,12 @@ const hasTeams = computed(() => teams.value.length > 0)
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="player in byDivision(team.players, 'yellow')" :key="player.id">
+                  <tr
+                    v-for="player in byDivision(team.players, 'yellow')"
+                    :key="player.id"
+                    class="hover:bg-base-300/40 cursor-pointer"
+                    @click="openPlayer(player.id)"
+                  >
                     <td class="font-semibold text-sm md:text-base">{{ player.name }}</td>
                     <td class="text-right tabular-nums text-primary font-bold text-sm md:text-base">
                       {{ formatPoints(player.points) }}

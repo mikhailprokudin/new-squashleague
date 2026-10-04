@@ -46,6 +46,12 @@ try {
         $method === 'GET' && ($uri === '/api/players' || $uri === '/players')
             => (new PlayersController())->index(),
 
+        $method === 'GET' && preg_match('#^/api/players/(\d+)/stats$#', $uri, $m)
+            => (new PlayersController())->stats((int) $m[1]),
+
+        $method === 'GET' && preg_match('#^/players/(\d+)/stats$#', $uri, $m)
+            => (new PlayersController())->stats((int) $m[1]),
+
         $method === 'POST' && ($uri === '/api/players' || $uri === '/players')
             => (new PlayersController())->store(),
 

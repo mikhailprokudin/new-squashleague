@@ -1,4 +1,4 @@
-import type { MatchResult, Opponent, Player, Score, StandingTeam } from '@/types'
+import type { MatchResult, Opponent, Player, PlayerStats, Score, StandingTeam } from '@/types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -32,6 +32,14 @@ export function fetchOpponents(playerId: number) {
     player: { id: number; name: string; team_id: number; division: string }
     opponents: Opponent[]
   }>(`/api/opponents?player_id=${playerId}`)
+}
+
+export function fetchMatches() {
+  return request<{ matches: MatchResult[] }>('/api/matches')
+}
+
+export function fetchPlayerStats(playerId: number) {
+  return request<PlayerStats>(`/api/players/${playerId}/stats`)
 }
 
 export function createMatch(payload: {
