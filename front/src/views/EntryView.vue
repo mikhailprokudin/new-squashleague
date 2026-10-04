@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMatchEntryStore } from '@/stores/matchEntry'
-import { resolveMatchResult, type MatchScore } from '@/types'
+import type { MatchScore } from '@/types'
 import PlayerCombobox, { type ComboboxOption } from '@/components/PlayerCombobox.vue'
 
 const store = useMatchEntryStore()
@@ -74,14 +74,12 @@ async function onSubmit() {
     return
   }
 
-  const resolved = resolveMatchResult(player1Id.value, player2Id.value, score.value)
-
   try {
+    // Score is always from player1's perspective (3-x or x-3). Backend derives the winner.
     await store.submit({
       player1_id: player1Id.value,
       player2_id: player2Id.value,
-      winner_id: resolved.winner_id,
-      score: resolved.score,
+      score: score.value,
     })
     player1Id.value = null
     player2Id.value = null

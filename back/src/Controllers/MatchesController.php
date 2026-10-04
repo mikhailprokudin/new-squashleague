@@ -117,17 +117,13 @@ final class MatchesController
             return;
         }
 
-        $resolved = $this->resolveScore($scoreInput, $player1Id, $player2Id);
+        $winnerIdInput = (int) ($body['winner_id'] ?? 0);
+        $resolved = $this->resolveScore($scoreInput, $player1Id, $player2Id, $winnerIdInput);
         if ($resolved === null) {
             Response::error('Invalid score. Allowed: 3-0, 3-1, 3-2, 0-3, 1-3, 2-3', 422);
             return;
         }
 
-        $winnerId = (int) ($body['winner_id'] ?? 0);
-        if ($winnerId > 0 && $winnerId !== $resolved['winner_id']) {
-            Response::error('winner_id does not match score', 422);
-            return;
-        }
         $winnerId = $resolved['winner_id'];
         $score = $resolved['score'];
 
@@ -195,15 +191,19 @@ final class MatchesController
     }
 
     /**
-     * Score is from player1's perspective:
-     * 3-x → player1 won, x-3 → player2 won.
+     * Preferred: score from player1's perspective (3-x or x-3).
+     * Also accepted: normalized 3-x + winner_id (winner may be player2).
      * Stored score is always normalized to 3-0 / 3-1 / 3-2.
      *
      * @return array{winner_id: int, score: string}|null
      */
-    private function resolveScore(string $score, int $player1Id, int $player2Id): ?array
-    {
-        $map = [
+    private function resolveScore(
+        string $score,
+        int $player1Id,
+        int $player2Id,
+        int $winnerIdInput = 0
+    ): ?array {
+        $fromPlayer1 = [
             '3-0' => ['winner_id' => $player1Id, 'score' => '3-0'],
             '3-1' => ['winner_id' => $player1Id, 'score' => '3-1'],
             '3-2' => ['winner_id' => $player1Id, 'score' => '3-2'],
@@ -212,6 +212,30 @@ final class MatchesController
             '2-3' => ['winner_id' => $player2Id, 'score' => '3-2'],
         ];
 
-        return $map[$score] ?? null;
+        if (!isset($fromPlayer1[$score])) {
+            return null;
+        }
+
+        $resolved = $fromPlayer1[$score];
+
+        // Compat: client sent normalized 3-x plus explicit winner_id for player2
+        if (
+            $winnerIdInput > 0
+            && in_array($score, ['3-0', '3-1', '3-2'], true)
+            && in_array($winnerIdInput, [$player1Id, $player2Id], true)
+            && $winnerIdInput !== $resolved['winner_id']
+        ) {
+            return [
+                'winner_id' => $winnerIdInput,
+                'score' => $score,
+            ];
+        }
+
+        if ($winnerIdInput > 0 && $winnerIdInput !== $resolved['winner_id']) {
+            return null;
+        }
+
+        return $resolved;
     }
 }
+

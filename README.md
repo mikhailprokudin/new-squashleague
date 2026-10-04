@@ -28,16 +28,16 @@ docker compose up --build
 
 Прод-стек: [`docker-compose.prod.yml`](docker-compose.prod.yml) + [`.env.example`](.env.example) + [`deploy/nginx.conf`](deploy/nginx.conf).
 
-Автодеплой: пуш в `main` → GitHub Actions → SSH на сервер → `git pull` + `docker compose up --build -d`.  
-Secrets и первичная настройка сервера: [`deploy/README.md`](deploy/README.md).
+Автодеплой: пуш в `main` → Actions собирает образы в GHCR → SSH на сервер → `pull` + `up -d` (без сборки на сервере).  
+Secrets и настройка: [`deploy/README.md`](deploy/README.md) (нужен `GHCR_TOKEN` с `read:packages`, если пакеты private).
 
-Кратко вручную:
+Кратко вручную на сервере (образы уже в GHCR):
 
 ```bash
 cp .env.example .env          # задать пароли MySQL
-docker compose -f docker-compose.prod.yml --env-file .env up --build -d
+docker compose -f docker-compose.prod.yml --env-file .env pull
+docker compose -f docker-compose.prod.yml --env-file .env up -d
 sudo cp /opt/new-league/deploy/nginx.conf /etc/nginx/sites-available/squash-league
-# включить сайт, certbot для squashleague.ru
 ```
 
 В проде наружу слушает только `127.0.0.1:3000` (front). MySQL и API закрыты; host nginx проксирует домен на front.

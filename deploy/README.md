@@ -2,7 +2,12 @@
 
 ## GitHub Actions (автодеплой)
 
-При пуше в `main` workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) по SSH заходит на сервер, делает `git pull` и `docker compose ... up --build -d`.
+При пуше в `main` workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml):
+
+1. **Build** — собирает образы `api` и `front` в GitHub Actions и пушит в GHCR
+2. **Deploy** — по SSH на сервер: `git pull`, `docker compose pull`, `up -d` (**без `--build`**)
+
+Даунтайм сокращается до короткого recreate контейнеров (секунды), а не минутной сборки Node на сервере.
 
 ### Secrets в GitHub
 
@@ -13,8 +18,14 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | `SSH_HOST` | `203.0.113.10` или `squashleague.ru` | да |
 | `SSH_USER` | `deploy` | да |
 | `SSH_PRIVATE_KEY` | содержимое приватного ключа (`-----BEGIN ...`) | да |
+| `GHCR_TOKEN` | PAT с правом `read:packages` | да (если пакеты GHCR private) |
 | `SSH_PORT` | `22` | нет (по умолчанию 22) |
 | `DEPLOY_PATH` | `/opt/new-league` | нет (по умолчанию `/opt/new-league`) |
+
+`GHCR_TOKEN`: GitHub → Settings → Developer settings → Personal access tokens → classic, scope `read:packages` (и `write:packages` не обязателен на сервере).  
+Либо сделай пакеты `new-squashleague-api` / `new-squashleague-front` **public** в GHCR — тогда токен для pull не нужен.
+
+После первого успешного push образов: GHCR → Packages → каждый пакет → Package settings → связать с репозиторием (Actions сможет писать дальше).
 
 ### Один раз на сервере
 
@@ -92,9 +103,18 @@ nano .env   # set strong MYSQL_ROOT_PASSWORD and DB_PASSWORD (same value if DB_U
 
 ## 4. Start containers
 
+Образы должны уже быть в GHCR (после первого успешного Actions build). На сервере:
+
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env up --build -d
+# один раз: логин в GHCR (если пакеты private)
+echo "$GHCR_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USER --password-stdin
+
+export IMAGE_TAG=latest
+docker compose -f docker-compose.prod.yml --env-file .env pull
+docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
+
+Локальная сборка на сервере (`--build`) для прода **не используется**.
 
 Check locally on the server:
 
@@ -130,10 +150,14 @@ App URL: `https://squashleague.ru`
 Entry form: `https://squashleague.ru/entry`
 ## 6. Update
 
+Обычный путь — пуш в `main` (Actions). Вручную:
+
 ```bash
 cd /opt/new-league
-# git pull  or  rsync
-docker compose -f docker-compose.prod.yml --env-file .env up --build -d
+git pull
+export IMAGE_TAG=latest   # или конкретный commit sha
+docker compose -f docker-compose.prod.yml --env-file .env pull
+docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
 ## 7. Если API отдаёт 500: Table 'teams' doesn't exist

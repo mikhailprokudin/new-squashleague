@@ -1,4 +1,4 @@
-import type { MatchResult, Opponent, Player, PlayerStats, Score, StandingTeam } from '@/types'
+import type { MatchResult, MatchScore, Opponent, Player, PlayerStats, StandingTeam } from '@/types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -45,8 +45,8 @@ export function fetchPlayerStats(playerId: number) {
 export function createMatch(payload: {
   player1_id: number
   player2_id: number
-  winner_id: number
-  score: Score
+  score: MatchScore
+  winner_id?: number
 }) {
   return request<{
     match: MatchResult

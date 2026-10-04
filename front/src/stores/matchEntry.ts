@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { createMatch, fetchOpponents, fetchPlayers } from '@/api/client'
-import type { Opponent, Player, Score } from '@/types'
+import type { MatchScore, Opponent, Player } from '@/types'
 
 export const useMatchEntryStore = defineStore('matchEntry', () => {
   const players = ref<Player[]>([])
@@ -46,8 +46,8 @@ export const useMatchEntryStore = defineStore('matchEntry', () => {
   async function submit(payload: {
     player1_id: number
     player2_id: number
-    winner_id: number
-    score: Score
+    score: MatchScore
+    winner_id?: number
   }) {
     submitting.value = true
     error.value = null

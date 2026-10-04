@@ -9,22 +9,92 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+
 jobs:
-  deploy:
-    name: Deploy to server
+  build:
+    name: Build and push images
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      api_image: ${{ steps.meta.outputs.api_image }}
+      front_image: ${{ steps.meta.outputs.front_image }}
+      ghcr_user: ${{ steps.meta.outputs.ghcr_user }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image names and tag
+        id: meta
+        run: |
+          OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "ghcr_user=${OWNER}" >> "$GITHUB_OUTPUT"
+          echo "api_image=ghcr.io/${OWNER}/new-squashleague-api" >> "$GITHUB_OUTPUT"
+          echo "front_image=ghcr.io/${OWNER}/new-squashleague-front" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./back
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.api_image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.api_image }}:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push front image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./front
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.front_image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.front_image }}:latest
+          cache-from: type=gha,scope=front
+          cache-to: type=gha,mode=max,scope=front
+
+  deploy:
+    name: Deploy to server
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          API_IMAGE: ${{ needs.build.outputs.api_image }}
+          FRONT_IMAGE: ${{ needs.build.outputs.front_image }}
+          GHCR_USER: ${{ needs.build.outputs.ghcr_user }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script_stop: true
-          command_timeout: 25m
+          command_timeout: 15m
+          envs: IMAGE_TAG,API_IMAGE,FRONT_IMAGE,GHCR_USER,GHCR_TOKEN
           script: |
             set -euo pipefail
 
@@ -59,7 +129,16 @@ jobs:
               exit 1
             fi
 
-            docker compose -f docker-compose.prod.yml --env-file .env up --build -d --remove-orphans
-            docker compose -f docker-compose.prod.yml --env-file .env ps
+            if [ -n "${GHCR_TOKEN:-}" ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            else
+              echo "WARNING: GHCR_TOKEN is empty; pull will work only for public packages."
+            fi
 
-            echo "Deploy finished."
+            export IMAGE_TAG API_IMAGE FRONT_IMAGE
+            docker compose -f docker-compose.prod.yml --env-file .env pull api front
+            docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml --env-file .env ps
+            docker image prune -f
+
+            echo "Deploy finished (IMAGE_TAG=$IMAGE_TAG)."
