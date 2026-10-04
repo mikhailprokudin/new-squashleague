@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMatchEntryStore } from '@/stores/matchEntry'
 import { resolveMatchResult, type MatchScore } from '@/types'
+import PlayerCombobox, { type ComboboxOption } from '@/components/PlayerCombobox.vue'
 
 const store = useMatchEntryStore()
 const {
@@ -40,6 +41,20 @@ watch(player2Id, () => {
 
 const player1 = computed(() => players.value.find((p) => p.id === player1Id.value) ?? null)
 const player2 = computed(() => opponents.value.find((p) => p.id === player2Id.value) ?? null)
+
+const playerOptions = computed<ComboboxOption[]>(() =>
+  players.value.map((p) => ({
+    id: p.id,
+    label: labelForPlayer(p),
+  })),
+)
+
+const opponentOptions = computed<ComboboxOption[]>(() =>
+  opponents.value.map((o) => ({
+    id: o.id,
+    label: `${labelForPlayer(o)} — осталось матчей: ${o.matches_remaining}`,
+  })),
+)
 
 const canSubmit = computed(
   () =>
@@ -105,28 +120,22 @@ function scoreLabel(s: MatchScore) {
       <div class="card-body gap-4">
         <fieldset class="fieldset">
           <legend class="fieldset-legend">Игрок 1</legend>
-          <select v-model.number="player1Id" class="select w-full" :disabled="loadingPlayers">
-            <option :value="null" disabled>Выберите игрока</option>
-            <option v-for="p in players" :key="p.id" :value="p.id">
-              {{ labelForPlayer(p) }}
-            </option>
-          </select>
+          <PlayerCombobox
+            v-model="player1Id"
+            :options="playerOptions"
+            :disabled="loadingPlayers"
+            placeholder="Начните вводить имя игрока…"
+          />
         </fieldset>
 
         <fieldset class="fieldset">
           <legend class="fieldset-legend">Соперник</legend>
-          <select
-            v-model.number="player2Id"
-            class="select w-full"
+          <PlayerCombobox
+            v-model="player2Id"
+            :options="opponentOptions"
             :disabled="!player1Id || loadingOpponents"
-          >
-            <option :value="null" disabled>
-              {{ loadingOpponents ? 'Загрузка…' : 'Выберите соперника' }}
-            </option>
-            <option v-for="o in opponents" :key="o.id" :value="o.id">
-              {{ labelForPlayer(o) }} — осталось матчей: {{ o.matches_remaining }}
-            </option>
-          </select>
+            :placeholder="loadingOpponents ? 'Загрузка…' : 'Начните вводить имя соперника…'"
+          />
           <p
             v-if="player1Id && !loadingOpponents && opponents.length === 0"
             class="label text-warning"

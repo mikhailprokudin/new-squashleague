@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useStandingsStore } from '@/stores/standings'
 import type { StandingPlayer } from '@/types'
+import { formatPointsLabel } from '@/utils/pluralize'
 
 const store = useStandingsStore()
 const router = useRouter()
@@ -58,7 +59,7 @@ const hasTeams = computed(() => teams.value.length > 0)
           <div class="flex items-center justify-between gap-3">
             <h2 class="card-title font-display text-2xl tracking-wide">{{ team.name }}</h2>
             <span class="badge badge-secondary badge-outline tabular-nums">
-              {{ formatPoints(teamTotalPoints(team.players)) }} очков
+              {{ formatPointsLabel(teamTotalPoints(team.players)) }}
             </span>
           </div>
 
