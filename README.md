@@ -19,6 +19,8 @@ docker compose up --build
 | Приложение (UI) | http://localhost:3000 |
 | Форма ввода результата | http://localhost:3000/entry |
 | API напрямую | http://localhost:8080/api/standings |
+| Спецификация API (Swagger) | http://localhost:8080/api/docs (или http://localhost:3000/api/docs) |
+| OpenAPI YAML | http://localhost:8080/api/openapi.yaml |
 | MySQL | `localhost:3306` (user `root`, пароль пустой) |
 
 Остановка: `docker compose down`  
@@ -79,7 +81,9 @@ cd back
 php -S 127.0.0.1:8080 router.php
 ```
 
-API доступен по префиксу `/api/...`, например:
+API доступен по префиксу `/api/...`. Интерактивная спецификация: [`/api/docs`](http://localhost:8080/api/docs) (файл [`back/openapi.yaml`](back/openapi.yaml)).
+
+Эндпоинты:
 
 - `GET  /api/standings`
 - `GET  /api/players`

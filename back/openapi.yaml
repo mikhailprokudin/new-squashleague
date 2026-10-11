@@ -1,0 +1,525 @@
+openapi: 3.0.3
+info:
+  title: Squash League API
+  description: API таблицы сквош-лиги (3 команды × 2 дивизиона).
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local PHP server
+  - url: /
+    description: Via front/nginx proxy
+
+tags:
+  - name: standings
+  - name: players
+  - name: matches
+
+paths:
+  /api/standings:
+    get:
+      tags: [standings]
+      summary: Турнирная таблица
+      operationId: getStandings
+      responses:
+        '200':
+          description: Команды с активными игроками и очками
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [teams]
+                properties:
+                  teams:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StandingTeam'
+
+  /api/players:
+    get:
+      tags: [players]
+      summary: Список активных игроков
+      operationId: listPlayers
+      parameters:
+        - name: team_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: division
+          in: query
+          schema:
+            $ref: '#/components/schemas/Division'
+      responses:
+        '200':
+          description: Список игроков
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [players]
+                properties:
+                  players:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Player'
+        '422':
+          $ref: '#/components/responses/Error'
+
+    post:
+      tags: [players]
+      summary: Создать игрока
+      operationId: createPlayer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlayerRequest'
+            example:
+              team_id: 1
+              division: red
+              name: Иванов
+      responses:
+        '201':
+          description: Игрок создан
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [player]
+                properties:
+                  player:
+                    $ref: '#/components/schemas/Player'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+
+  /api/players/{id}:
+    put:
+      tags: [players]
+      summary: Обновить игрока
+      operationId: updatePlayer
+      parameters:
+        - $ref: '#/components/parameters/PlayerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePlayerRequest'
+            example:
+              name: Петров
+      responses:
+        '200':
+          description: Игрок обновлён
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [player]
+                properties:
+                  player:
+                    $ref: '#/components/schemas/Player'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+
+    delete:
+      tags: [players]
+      summary: Soft-delete игрока
+      operationId: deletePlayer
+      parameters:
+        - $ref: '#/components/parameters/PlayerId'
+      responses:
+        '200':
+          description: Игрок деактивирован
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '404':
+          $ref: '#/components/responses/Error'
+
+  /api/players/{id}/stats:
+    get:
+      tags: [players]
+      summary: Статистика игрока
+      operationId: getPlayerStats
+      parameters:
+        - $ref: '#/components/parameters/PlayerId'
+      responses:
+        '200':
+          description: Очки, сыгранные и несыгранные матчи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerStats'
+        '404':
+          $ref: '#/components/responses/Error'
+
+  /api/opponents:
+    get:
+      tags: [matches]
+      summary: Доступные соперники
+      description: Игроки других команд, с которыми ещё можно сыграть.
+      operationId: listOpponents
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Игрок и список соперников
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpponentsResponse'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+
+  /api/matches:
+    get:
+      tags: [matches]
+      summary: Список матчей
+      operationId: listMatches
+      responses:
+        '200':
+          description: Все матчи (новые сверху)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches]
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Match'
+
+    post:
+      tags: [matches]
+      summary: Сохранить результат матча
+      operationId: createMatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMatchRequest'
+            example:
+              player1_id: 1
+              player2_id: 13
+              winner_id: 1
+              score: '3-1'
+      responses:
+        '201':
+          description: Матч создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateMatchResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          description: Ошибка валидации (лимит матчей и т.п.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithExtras'
+
+components:
+  parameters:
+    PlayerId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    Error:
+      description: Ошибка
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Division:
+      type: string
+      enum: [red, yellow]
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    ErrorWithExtras:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            matches_played:
+              type: integer
+            max_matches:
+              type: integer
+
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+        team_id:
+          type: integer
+        team_name:
+          type: string
+          nullable: true
+        team_slug:
+          type: string
+          nullable: true
+        division:
+          $ref: '#/components/schemas/Division'
+        name:
+          type: string
+        is_active:
+          type: boolean
+
+    CreatePlayerRequest:
+      type: object
+      required: [team_id, division, name]
+      properties:
+        team_id:
+          type: integer
+          minimum: 1
+        division:
+          $ref: '#/components/schemas/Division'
+        name:
+          type: string
+          minLength: 1
+
+    UpdatePlayerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        division:
+          $ref: '#/components/schemas/Division'
+        team_id:
+          type: integer
+          minimum: 1
+        is_active:
+          type: boolean
+          description: Soft-reactivate deleted slot
+
+    StandingTeam:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        players:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              division:
+                $ref: '#/components/schemas/Division'
+              points:
+                type: number
+              matches_played:
+                type: integer
+
+    PlayerStats:
+      type: object
+      properties:
+        player:
+          $ref: '#/components/schemas/Player'
+        points:
+          type: number
+        matches_played:
+          type: integer
+        max_possible_points:
+          type: number
+        usefulness:
+          type: number
+          nullable: true
+          description: Процент полезности (points / max_possible_points * 100)
+        played_matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayedMatch'
+        unplayed_matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnplayedMatch'
+
+    PlayedMatch:
+      type: object
+      properties:
+        id:
+          type: integer
+        opponent_id:
+          type: integer
+        opponent_name:
+          type: string
+        opponent_team_name:
+          type: string
+        opponent_division:
+          $ref: '#/components/schemas/Division'
+        score:
+          type: string
+          description: Счёт с точки зрения запрошенного игрока
+        won:
+          type: boolean
+        points_earned:
+          type: number
+        created_at:
+          type: string
+          nullable: true
+
+    UnplayedMatch:
+      type: object
+      properties:
+        opponent_id:
+          type: integer
+        opponent_name:
+          type: string
+        opponent_team_name:
+          type: string
+        opponent_division:
+          $ref: '#/components/schemas/Division'
+
+    OpponentsResponse:
+      type: object
+      required: [player, opponents]
+      properties:
+        player:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            team_id:
+              type: integer
+            division:
+              $ref: '#/components/schemas/Division'
+        opponents:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              team_id:
+                type: integer
+              team_name:
+                type: string
+              team_slug:
+                type: string
+              division:
+                $ref: '#/components/schemas/Division'
+              matches_played:
+                type: integer
+              matches_remaining:
+                type: integer
+
+    Match:
+      type: object
+      properties:
+        id:
+          type: integer
+        player1_id:
+          type: integer
+        player2_id:
+          type: integer
+        winner_id:
+          type: integer
+        score:
+          type: string
+          description: Нормализованный счёт победителя (3-0, 3-1, 3-2)
+        points_player1:
+          type: number
+        points_player2:
+          type: number
+        player1_name:
+          type: string
+        player2_name:
+          type: string
+        winner_name:
+          type: string
+        player1_team_name:
+          type: string
+        player2_team_name:
+          type: string
+        player1_division:
+          $ref: '#/components/schemas/Division'
+        player2_division:
+          $ref: '#/components/schemas/Division'
+        created_at:
+          type: string
+
+    CreateMatchRequest:
+      type: object
+      required: [player1_id, player2_id, score]
+      properties:
+        player1_id:
+          type: integer
+          minimum: 1
+        player2_id:
+          type: integer
+          minimum: 1
+        score:
+          type: string
+          description: >
+            Предпочтительно с точки зрения player1 (3-0…2-3).
+            Также принимается нормализованный 3-x вместе с winner_id.
+          enum: ['3-0', '3-1', '3-2', '0-3', '1-3', '2-3']
+        winner_id:
+          type: integer
+          minimum: 1
+          description: Опционально; нужен для совместимости с нормализованным счётом 3-x
+
+    CreateMatchResponse:
+      type: object
+      required: [match, scoring]
+      properties:
+        match:
+          $ref: '#/components/schemas/Match'
+        scoring:
+          type: object
+          properties:
+            match_type:
+              type: string
+            points_winner:
+              type: number
+            points_loser:
+              type: number

@@ -40,6 +40,52 @@ if (str_starts_with($uri, '/index.php')) {
 
 try {
     match (true) {
+        $method === 'GET' && ($uri === '/api/openapi.yaml' || $uri === '/openapi.yaml')
+            => (static function (): void {
+                $path = dirname(__DIR__) . '/openapi.yaml';
+                if (!is_file($path)) {
+                    Response::error('OpenAPI spec not found', 404);
+                    return;
+                }
+                http_response_code(200);
+                header('Content-Type: application/yaml; charset=utf-8');
+                readfile($path);
+            })(),
+
+        $method === 'GET' && ($uri === '/api/docs' || $uri === '/docs')
+            => (static function (): void {
+                http_response_code(200);
+                header('Content-Type: text/html; charset=utf-8');
+                echo <<<'HTML'
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Squash League API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    body { margin: 0; }
+    #swagger-ui { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: '/api/openapi.yaml',
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [SwaggerUIBundle.presets.apis],
+      layout: 'BaseLayout',
+    });
+  </script>
+</body>
+</html>
+HTML;
+            })(),
+
         $method === 'GET' && ($uri === '/api/standings' || $uri === '/standings')
             => (new StandingsController())->index(),
 

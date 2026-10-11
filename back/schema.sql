@@ -44,9 +44,9 @@ CREATE TABLE matches (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO teams (name, slug) VALUES
-  ('Команда A', 'team-a'),
-  ('Команда B', 'team-b'),
-  ('Команда C', 'team-c');
+  ('Трайфл Кайфл', 'team-a'),
+  ('Киллшот', 'team-b'),
+  ('Лучшие', 'team-c');
 
 -- Columns left→right = teams A/B/C; top block = red, bottom block = yellow
 INSERT INTO players (team_id, division, name) VALUES
