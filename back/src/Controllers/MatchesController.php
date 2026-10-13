@@ -190,6 +190,17 @@ final class MatchesController
         ], 201);
     }
 
+    public function destroy(int $id): void
+    {
+        if ($this->matches->findById($id) === null) {
+            Response::error('Match not found', 404);
+            return;
+        }
+
+        $this->matches->delete($id);
+        Response::json(['ok' => true]);
+    }
+
     /**
      * Preferred: score from player1's perspective (3-x or x-3).
      * Also accepted: normalized 3-x + winner_id (winner may be player2).

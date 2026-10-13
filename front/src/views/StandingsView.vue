@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useStandingsStore } from '@/stores/standings'
 import type { StandingPlayer } from '@/types'
-import { formatPointsLabel } from '@/utils/pluralize'
+import { formatMatchesLabel, formatPointsLabel } from '@/utils/pluralize'
 
 const store = useStandingsStore()
 const router = useRouter()
@@ -24,6 +24,10 @@ function formatPoints(value: number) {
 
 function teamTotalPoints(players: StandingPlayer[]) {
   return players.reduce((sum, player) => sum + player.points, 0)
+}
+
+function teamTotalMatches(players: StandingPlayer[]) {
+  return players.reduce((sum, player) => sum + player.matches_played, 0)
 }
 
 function openPlayer(playerId: number) {
@@ -58,9 +62,14 @@ const hasTeams = computed(() => teams.value.length > 0)
         <div class="card-body gap-5">
           <div class="flex items-center justify-between gap-3">
             <h2 class="card-title font-display text-2xl tracking-wide">{{ team.name }}</h2>
-            <span class="badge badge-secondary badge-outline tabular-nums">
-              {{ formatPointsLabel(teamTotalPoints(team.players)) }}
-            </span>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <span class="badge badge-secondary badge-outline tabular-nums">
+                {{ formatPointsLabel(teamTotalPoints(team.players)) }}
+              </span>
+              <span class="badge badge-outline tabular-nums">
+                {{ formatMatchesLabel(teamTotalMatches(team.players)) }}
+              </span>
+            </div>
           </div>
 
           <div class="rounded-box border border-error/40 bg-error/10 p-3">

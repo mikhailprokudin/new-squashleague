@@ -25,3 +25,8 @@ export function formatPointsLabel(value: number): string {
   const word = pluralizeRu(value, 'очко', 'очка', 'очков')
   return `${formatted} ${word}`
 }
+
+export function formatMatchesLabel(value: number): string {
+  const word = pluralizeRu(value, 'матч', 'матча', 'матчей')
+  return `${value} ${word}`
+}

@@ -18,14 +18,14 @@ return [
     'higher_vs_lower' => [
         '3-0' => ['winner' => 4.5, 'loser' => 2.5],
         '3-1' => ['winner' => 4.0, 'loser' => 3.0],
-        '3-2' => ['winner' => 3.5, 'loser' => 2.5],
+        '3-2' => ['winner' => 3.8, 'loser' => 3.2],
     ],
 
     // Yellow (lower) beats red (higher)
     'lower_vs_higher' => [
         '3-0' => ['winner' => 6.5, 'loser' => 0.5],
         '3-1' => ['winner' => 6.0, 'loser' => 1.0],
-        '3-2' => ['winner' => 5.5, 'loser' => 2.5],
+        '3-2' => ['winner' => 5.5, 'loser' => 1.5],
     ],
 
     'max_matches_same_division' => 2,

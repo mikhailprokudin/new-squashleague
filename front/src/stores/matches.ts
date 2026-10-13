@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchMatches } from '@/api/client'
+import { deleteMatch, fetchMatches } from '@/api/client'
 import type { MatchResult } from '@/types'
 
 export const useMatchesStore = defineStore('matches', () => {
   const matches = ref<MatchResult[]>([])
   const loading = ref(false)
+  const deletingId = ref<number | null>(null)
   const error = ref<string | null>(null)
 
   async function load() {
@@ -21,5 +22,19 @@ export const useMatchesStore = defineStore('matches', () => {
     }
   }
 
-  return { matches, loading, error, load }
+  async function remove(id: number) {
+    deletingId.value = id
+    error.value = null
+    try {
+      await deleteMatch(id)
+      matches.value = matches.value.filter((match) => match.id !== id)
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to delete match'
+      throw e
+    } finally {
+      deletingId.value = null
+    }
+  }
+
+  return { matches, loading, deletingId, error, load, remove }
 })

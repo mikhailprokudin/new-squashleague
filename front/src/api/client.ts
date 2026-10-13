@@ -1,13 +1,20 @@
 import type { MatchResult, MatchScore, Opponent, Player, PlayerStats, StandingTeam } from '@/types'
 
+/** Static API token for POST / DELETE (must match back/config/auth.php). */
+const API_TOKEN = '60a8a053-5c8f-4e25-b46b-d03ea0f70145'
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? 'GET').toUpperCase()
+  const needsAuth = method === 'POST' || method === 'DELETE'
+
   const response = await fetch(path, {
+    ...init,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      ...(needsAuth ? { Authorization: API_TOKEN } : {}),
       ...(init?.headers ?? {}),
     },
-    ...init,
   })
 
   const data = await response.json().catch(() => ({}))
@@ -54,5 +61,11 @@ export function createMatch(payload: {
   }>('/api/matches', {
     method: 'POST',
     body: JSON.stringify(payload),
+  })
+}
+
+export function deleteMatch(id: number) {
+  return request<{ ok: boolean }>(`/api/matches/${id}`, {
+    method: 'DELETE',
   })
 }

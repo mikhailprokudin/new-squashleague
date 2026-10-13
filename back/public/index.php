@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Accept');
+header('Access-Control-Allow-Headers: Content-Type, Accept, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -24,6 +24,7 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
+use App\Auth;
 use App\Controllers\MatchesController;
 use App\Controllers\PlayersController;
 use App\Controllers\StandingsController;
@@ -36,6 +37,10 @@ $uri = rtrim($uri, '/') ?: '/';
 // Support both /api/... and /index.php/api/... and bare /standings when docroot is public
 if (str_starts_with($uri, '/index.php')) {
     $uri = substr($uri, strlen('/index.php')) ?: '/';
+}
+
+if ($method === 'POST' || $method === 'DELETE') {
+    Auth::requireToken();
 }
 
 try {
@@ -121,6 +126,12 @@ HTML;
 
         $method === 'POST' && ($uri === '/api/matches' || $uri === '/matches')
             => (new MatchesController())->store(),
+
+        $method === 'DELETE' && preg_match('#^/api/matches/(\d+)$#', $uri, $m)
+            => (new MatchesController())->destroy((int) $m[1]),
+
+        $method === 'DELETE' && preg_match('#^/matches/(\d+)$#', $uri, $m)
+            => (new MatchesController())->destroy((int) $m[1]),
 
         default => Response::error('Not found', 404),
     };

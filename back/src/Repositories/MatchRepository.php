@@ -102,6 +102,14 @@ final class MatchRepository
         return $row ? $this->normalize($row) : null;
     }
 
+    public function delete(int $id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM matches WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+
+        return $stmt->rowCount() > 0;
+    }
+
     public function listAll(): array
     {
         $stmt = $this->db->query(
